@@ -1,26 +1,173 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* ── Core Palette (Light) ── */
+  --color-ground: #FAF8F5;
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #F3F1ED;
+  --color-surface-hover: #EBE8E3;
+  --color-border: #E0DDD7;
+  --color-border-light: #D4D0C9;
+  --color-text: #1A1816;
+  --color-text-muted: #6B665E;
+  --color-text-dim: #A8A29A;
+
+  /* ── Tribe Colors (deepened for light bg) ── */
+  --color-keepers: #6B6560;
+  --color-keepers-accent: #7A6F5E;
+  --color-moderates: #A84E2E;
+  --color-moderates-accent: #B85C3A;
+  --color-adapters: #1E7A6A;
+  --color-adapters-accent: #238070;
+  --color-free: #A07D1A;
+  --color-free-accent: #B8911F;
+
+  /* ── Status ── */
+  --color-success: #1E7A6A;
+  --color-warning: #A07D1A;
+  --color-danger: #C0392B;
+  --color-info: #4A7FB5;
+
+  /* ── Typography ── */
+  --font-display: "Fraunces", serif;
+  --font-body: "Outfit", sans-serif;
+  --font-mono: "Space Mono", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ── Base ── */
+
+body {
+  background: var(--color-ground);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Grain Overlay ── */
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px;
+}
+
+/* ── Scrollbar ── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+/* ── Typography Classes ── */
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ── Tribe Glow Effects (subtle on light) ── */
+
+.glow-keepers {
+  box-shadow: 0 1px 3px rgba(122, 111, 94, 0.08), 0 4px 16px rgba(122, 111, 94, 0.04);
+}
+.glow-moderates {
+  box-shadow: 0 1px 3px rgba(184, 92, 58, 0.08), 0 4px 16px rgba(184, 92, 58, 0.04);
+}
+.glow-adapters {
+  box-shadow: 0 1px 3px rgba(35, 128, 112, 0.08), 0 4px 16px rgba(35, 128, 112, 0.04);
+}
+.glow-free {
+  box-shadow: 0 1px 3px rgba(184, 145, 31, 0.08), 0 4px 16px rgba(184, 145, 31, 0.04);
+}
+
+/* ── Animations ── */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes grow-line {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* ── Staggered Entrance ── */
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* ── Event Feed Scroll ── */
+
+.event-feed {
+  mask-image: linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
+}
+
+/* ── Tribe Card Border Gradient ── */
+
+.tribe-card-border {
+  position: relative;
+}
+
+.tribe-card-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    180deg,
+    var(--tribe-accent, var(--color-border)) 0%,
+    transparent 60%
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
 }

@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: seedling
+      POSTGRES_PASSWORD: seedling
+      POSTGRES_DB: seedling
+    ports:
+      - "5440:5432"
+    volumes:
+      - seedling_data:/var/lib/postgresql/data
+
+volumes:
+  seedling_data:
