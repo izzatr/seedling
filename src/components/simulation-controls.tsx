@@ -38,7 +38,7 @@ export default function SimulationControls({
     >
       {/* Left: Logo + Status */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
+        <a href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
           <div
             className="w-6 h-6 rounded-full"
             style={{
@@ -53,7 +53,7 @@ export default function SimulationControls({
           >
             seedling
           </span>
-        </div>
+        </a>
 
         <div
           className="h-4 w-px"

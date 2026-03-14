@@ -28,6 +28,9 @@ export const metadata: Metadata = {
   title: "Seedling — Civilization Simulation",
   description:
     "A multi-tribe civilization simulation powered by AI agents. Watch societies evolve, clash, and transform across generations.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

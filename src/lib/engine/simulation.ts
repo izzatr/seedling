@@ -173,7 +173,7 @@ async function processTribeTurn(
         messages: delib.messages, roundCount: delib.roundCount,
       });
 
-      // Process proposals — only adults (age >= 15) can vote
+      // Process all proposals — only adults (age >= 15) can vote
       const passedProposals: string[] = [];
       for (const proposal of delib.proposals) {
         broadcast(simulationId, "happening", {

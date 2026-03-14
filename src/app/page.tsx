@@ -67,27 +67,39 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
-      {/* Background atmosphere */}
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(122, 111, 94, 0.08), transparent), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(30, 122, 106, 0.06), transparent), radial-gradient(ellipse 50% 30% at 20% 90%, rgba(184, 92, 58, 0.05), transparent)",
-        }}
-      />
+    <div
+      className="h-screen flex flex-col relative overflow-hidden"
+      style={{
+        "--color-text-muted": "#3D3832",
+        "--color-text-dim": "#5C564E",
+      } as React.CSSProperties}
+    >
+      {/* Background video */}
+      <div className="absolute inset-0 pointer-events-none">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        >
+          <source src="/Generated Video March 14, 2026 - 2_36PM.mp4" type="video/mp4" />
+        </video>
+        {/* Gradient overlay for text readability */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(250, 248, 244, 0.9) 0%, rgba(250, 248, 244, 0.7) 25%, rgba(250, 248, 244, 0.4) 50%, rgba(250, 248, 244, 0.15) 75%, transparent 100%)",
+          }}
+        />
+      </div>
 
       {/* Header */}
-      <header className="relative z-10 flex items-center justify-between px-8 py-6">
+      <header className="relative z-10 flex items-center justify-between px-8 py-4">
         <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-full"
-            style={{
-              background:
-                "conic-gradient(from 0deg, #C4B5A0, #D4845A, #4CC9B0, #E8C547, #C4B5A0)",
-              opacity: 0.7,
-            }}
-          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="Seedling" className="w-7 h-7 opacity-70" />
           <span
             className="font-display text-lg tracking-wide"
             style={{ color: "var(--color-text-muted)" }}
@@ -99,23 +111,23 @@ export default function HomePage() {
           className="font-mono text-xs"
           style={{ color: "var(--color-text-dim)" }}
         >
-          v0.1 / civilization simulator
+          v0.1 / generational social simulator
         </div>
       </header>
 
       {/* Hero */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-8 pb-16">
-        <div className="max-w-4xl mx-auto text-center animate-fade-in-up">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
+        <div className="max-w-5xl mx-auto text-center animate-fade-in-up">
           {/* Title */}
           <h1
-            className="font-display text-6xl md:text-8xl font-light tracking-tight mb-6"
+            className="font-display text-5xl md:text-7xl font-light tracking-tight mb-3"
             style={{ color: "var(--color-text)" }}
           >
             Seedling
           </h1>
 
           <p
-            className="text-lg md:text-xl max-w-2xl mx-auto mb-4 leading-relaxed"
+            className="text-base md:text-lg max-w-2xl mx-auto mb-2 leading-relaxed"
             style={{ color: "var(--color-text-muted)" }}
           >
             How does a society&rsquo;s willingness to change its own rules shape
@@ -123,7 +135,7 @@ export default function HomePage() {
           </p>
 
           <p
-            className="text-sm max-w-xl mx-auto mb-16"
+            className="text-xs max-w-xl mx-auto mb-8"
             style={{ color: "var(--color-text-dim)" }}
           >
             Four tribes. Four philosophies. Powered by AI agents with
@@ -131,32 +143,32 @@ export default function HomePage() {
             evolution unfold in minutes.
           </p>
 
-          {/* Tribe Preview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+          {/* Tribe Preview Cards — compact */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
             {TRIBES.map((tribe, i) => (
               <div
                 key={tribe.name}
-                className={`tribe-card-border rounded-xl p-5 text-left opacity-0 animate-fade-in-up stagger-${i + 1} transition-all duration-300 hover:translate-y-[-2px]`}
+                className={`tribe-card-border rounded-lg p-3 text-left opacity-0 animate-fade-in-up stagger-${i + 1} transition-all duration-300 hover:translate-y-[-2px]`}
                 style={
                   {
-                    background: "var(--color-surface)",
+                    background: "rgba(250, 248, 244, 0.75)",
+                    backdropFilter: "blur(8px)",
                     "--tribe-accent": `var(--color-${tribe.colorClass}-accent)`,
                   } as React.CSSProperties
                 }
               >
-                {/* Tribe icon + name */}
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-2 mb-2">
                   <span
-                    className="text-xl"
+                    className="text-base"
                     style={{
                       color: `var(--color-${tribe.colorClass}-accent)`,
                     }}
                   >
                     {tribe.icon}
                   </span>
-                  <div>
+                  <div className="min-w-0">
                     <h3
-                      className="font-display text-base font-medium"
+                      className="font-display text-sm font-medium leading-tight"
                       style={{
                         color: `var(--color-${tribe.colorClass}-accent)`,
                       }}
@@ -164,7 +176,7 @@ export default function HomePage() {
                       {tribe.name}
                     </h3>
                     <p
-                      className="text-xs"
+                      className="text-[10px] leading-tight truncate"
                       style={{ color: "var(--color-text-dim)" }}
                     >
                       {tribe.tagline}
@@ -172,61 +184,29 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Stats */}
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between items-center">
-                    <span
-                      className="font-mono text-[10px] uppercase tracking-wider"
-                      style={{ color: "var(--color-text-dim)" }}
-                    >
-                      Governance
-                    </span>
-                    <span
-                      className="text-xs text-right"
-                      style={{ color: "var(--color-text-muted)" }}
-                    >
-                      {tribe.governance}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span
-                      className="font-mono text-[10px] uppercase tracking-wider"
-                      style={{ color: "var(--color-text-dim)" }}
-                    >
-                      Threshold
-                    </span>
-                    <span
-                      className="font-mono text-xs font-bold"
-                      style={{
-                        color: `var(--color-${tribe.colorClass}-accent)`,
-                      }}
-                    >
-                      {tribe.threshold}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span
-                      className="font-mono text-[10px] uppercase tracking-wider"
-                      style={{ color: "var(--color-text-dim)" }}
-                    >
-                      Mutability
-                    </span>
-                    <span
-                      className="text-xs text-right"
-                      style={{ color: "var(--color-text-muted)" }}
-                    >
-                      {tribe.magnitude}
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span
+                    className="font-mono text-[9px] uppercase tracking-wider"
+                    style={{ color: "var(--color-text-dim)" }}
+                  >
+                    Threshold
+                  </span>
+                  <span
+                    className="font-mono text-xs font-bold"
+                    style={{
+                      color: `var(--color-${tribe.colorClass}-accent)`,
+                    }}
+                  >
+                    {tribe.threshold}
+                  </span>
                 </div>
 
-                {/* Philosophy quote */}
                 <p
-                  className="text-xs italic leading-relaxed"
+                  className="text-[10px] italic leading-snug line-clamp-2"
                   style={{
                     color: "var(--color-text-dim)",
                     borderLeft: `2px solid var(--color-${tribe.colorClass})`,
-                    paddingLeft: "10px",
+                    paddingLeft: "8px",
                   }}
                 >
                   &ldquo;{tribe.philosophy}&rdquo;
@@ -239,11 +219,14 @@ export default function HomePage() {
           <button
             onClick={handleStart}
             disabled={loading}
-            className="group relative px-12 py-4 rounded-full font-display text-lg tracking-wide transition-all duration-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:border-[var(--color-text-muted)]"
+            className="group relative px-10 py-3 rounded-full font-display text-base tracking-wide transition-all duration-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               background:
-                "linear-gradient(135deg, rgba(122, 111, 94, 0.08), rgba(35, 128, 112, 0.08))",
-              border: "1px solid var(--color-border)",
+                "linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.7))",
+              backdropFilter: "blur(40px)",
+              WebkitBackdropFilter: "blur(40px)",
+              border: "1px solid rgba(255, 255, 255, 0.8)",
+              boxShadow: "0 4px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
               color: "var(--color-text)",
             }}
           >
@@ -257,7 +240,7 @@ export default function HomePage() {
           </button>
 
           <p
-            className="mt-4 font-mono text-[10px]"
+            className="mt-2 font-mono text-[10px]"
             style={{ color: "var(--color-text-dim)" }}
           >
             5 generations &middot; ~125 turns &middot; powered by Gemini
@@ -265,18 +248,17 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Footer line */}
+      {/* Footer */}
       <footer
-        className="relative z-10 border-t px-8 py-4 flex justify-between items-center"
+        className="relative z-10 px-8 py-3 flex justify-between items-center"
         style={{
-          borderColor: "var(--color-border)",
           color: "var(--color-text-dim)",
         }}
       >
         <span className="font-mono text-[10px]">
           AI agents with souls, values, and memories
         </span>
-        <span className="font-mono text-[10px]">hackathon 2025</span>
+        <span className="font-mono text-[10px]">Gemini 3 Hackathon Paris</span>
       </footer>
     </div>
   );

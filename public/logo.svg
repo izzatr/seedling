@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="a" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#C4B5A0"/>
+      <stop offset="100%" stop-color="#D4845A"/>
+    </linearGradient>
+    <linearGradient id="b" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D4845A"/>
+      <stop offset="100%" stop-color="#4CC9B0"/>
+    </linearGradient>
+    <linearGradient id="c" x1="1" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#4CC9B0"/>
+      <stop offset="100%" stop-color="#E8C547"/>
+    </linearGradient>
+    <linearGradient id="d" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#E8C547"/>
+      <stop offset="100%" stop-color="#C4B5A0"/>
+    </linearGradient>
+  </defs>
+  <!-- Four arc segments to simulate conic gradient -->
+  <path d="M16,0 A16,16 0 0,1 32,16 L16,16 Z" fill="url(#a)"/>
+  <path d="M32,16 A16,16 0 0,1 16,32 L16,16 Z" fill="url(#b)"/>
+  <path d="M16,32 A16,16 0 0,1 0,16 L16,16 Z" fill="url(#c)"/>
+  <path d="M0,16 A16,16 0 0,1 16,0 L16,16 Z" fill="url(#d)"/>
+</svg>

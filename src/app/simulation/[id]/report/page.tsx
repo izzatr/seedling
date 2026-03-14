@@ -2,6 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  ReferenceLine,
+} from "recharts";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from "@/components/ui/chart";
 
 // ── Types ──
 
@@ -1157,66 +1173,127 @@ export default function ReportPage() {
                     {/* ── Economy Tab ── */}
                     {section === "economy" && (
                       <div className="space-y-6">
-                        {tribe.economy.timeline.length > 0 ? (
+                        {tribe.economy.timeline.length > 1 ? (
                           <>
                             {/* Food & Wealth Chart */}
                             <div>
                               <SectionLabel>Food & Wealth Over Time</SectionLabel>
-                              <LineChart
-                                data={tribe.economy.timeline}
-                                lines={[
-                                  { key: "avgFood", label: "Avg Food", color: "var(--color-success)" },
-                                  { key: "avgWealth", label: "Avg Wealth", color: "var(--color-warning)" },
-                                ]}
-                                xKey="turn"
-                                height={180}
-                              />
+                              <ChartContainer
+                                config={{
+                                  avgFood: { label: "Avg Food", color: "var(--color-success)" },
+                                  avgWealth: { label: "Avg Wealth", color: "var(--color-warning)" },
+                                } satisfies ChartConfig}
+                                className="min-h-[200px] w-full"
+                              >
+                                <AreaChart data={tribe.economy.timeline} accessibilityLayer>
+                                  <defs>
+                                    <linearGradient id={`fillFood-${tribe.id}`} x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="var(--color-avgFood)" stopOpacity={0.3} />
+                                      <stop offset="100%" stopColor="var(--color-avgFood)" stopOpacity={0.02} />
+                                    </linearGradient>
+                                    <linearGradient id={`fillWealth-${tribe.id}`} x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="var(--color-avgWealth)" stopOpacity={0.3} />
+                                      <stop offset="100%" stopColor="var(--color-avgWealth)" stopOpacity={0.02} />
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid vertical={false} />
+                                  <XAxis dataKey="turn" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(v) => `T${v}`} />
+                                  <YAxis tickLine={false} axisLine={false} tickMargin={8} width={32} />
+                                  <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                                  <ChartLegend content={<ChartLegendContent />} />
+                                  <Area dataKey="avgFood" type="monotone" fill={`url(#fillFood-${tribe.id})`} stroke="var(--color-avgFood)" strokeWidth={2} />
+                                  <Area dataKey="avgWealth" type="monotone" fill={`url(#fillWealth-${tribe.id})`} stroke="var(--color-avgWealth)" strokeWidth={2} />
+                                </AreaChart>
+                              </ChartContainer>
                             </div>
 
                             {/* Population & Hunger Chart */}
                             <div>
                               <SectionLabel>Population & Hunger</SectionLabel>
-                              <LineChart
-                                data={tribe.economy.timeline}
-                                lines={[
-                                  { key: "population", label: "Population", color: colors.accent },
-                                  { key: "hungry", label: "Hungry", color: "var(--color-warning)" },
-                                  { key: "starving", label: "Starving", color: "var(--color-danger)" },
-                                ]}
-                                xKey="turn"
-                                height={180}
-                              />
+                              <ChartContainer
+                                config={{
+                                  population: { label: "Population", color: colors.accent },
+                                  hungry: { label: "Hungry", color: "var(--color-warning)" },
+                                  starving: { label: "Starving", color: "var(--color-danger)" },
+                                } satisfies ChartConfig}
+                                className="min-h-[200px] w-full"
+                              >
+                                <AreaChart data={tribe.economy.timeline} accessibilityLayer>
+                                  <defs>
+                                    <linearGradient id={`fillPop-${tribe.id}`} x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="var(--color-population)" stopOpacity={0.2} />
+                                      <stop offset="100%" stopColor="var(--color-population)" stopOpacity={0.02} />
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid vertical={false} />
+                                  <XAxis dataKey="turn" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(v) => `T${v}`} />
+                                  <YAxis tickLine={false} axisLine={false} tickMargin={8} width={32} allowDecimals={false} />
+                                  <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                                  <ChartLegend content={<ChartLegendContent />} />
+                                  <Area dataKey="population" type="monotone" fill={`url(#fillPop-${tribe.id})`} stroke="var(--color-population)" strokeWidth={2} />
+                                  <Area dataKey="hungry" type="monotone" fill="var(--color-hungry)" fillOpacity={0.1} stroke="var(--color-hungry)" strokeWidth={1.5} strokeDasharray="4 2" />
+                                  <Area dataKey="starving" type="monotone" fill="var(--color-starving)" fillOpacity={0.1} stroke="var(--color-starving)" strokeWidth={1.5} strokeDasharray="4 2" />
+                                </AreaChart>
+                              </ChartContainer>
                             </div>
 
                             {/* Inequality Chart */}
                             <div>
                               <SectionLabel>Wealth Inequality (Gini %)</SectionLabel>
-                              <LineChart
-                                data={tribe.economy.timeline}
-                                lines={[
-                                  { key: "inequality", label: "Inequality", color: "var(--color-info)" },
-                                ]}
-                                xKey="turn"
-                                height={140}
-                                thresholds={[
-                                  { value: 35, label: "moderate", color: "var(--color-warning)" },
-                                  { value: 60, label: "severe", color: "var(--color-danger)" },
-                                ]}
-                              />
+                              <ChartContainer
+                                config={{
+                                  inequality: { label: "Inequality %", color: "var(--color-info)" },
+                                } satisfies ChartConfig}
+                                className="min-h-[160px] w-full"
+                              >
+                                <AreaChart data={tribe.economy.timeline} accessibilityLayer>
+                                  <defs>
+                                    <linearGradient id={`fillIneq-${tribe.id}`} x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="var(--color-inequality)" stopOpacity={0.25} />
+                                      <stop offset="100%" stopColor="var(--color-inequality)" stopOpacity={0.02} />
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid vertical={false} />
+                                  <XAxis dataKey="turn" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(v) => `T${v}`} />
+                                  <YAxis tickLine={false} axisLine={false} tickMargin={8} width={32} domain={[0, 100]} />
+                                  <ReferenceLine y={35} stroke="var(--color-warning)" strokeDasharray="4 3" strokeOpacity={0.5} label={{ value: "moderate", position: "right", fill: "var(--color-warning)", fontSize: 10 }} />
+                                  <ReferenceLine y={60} stroke="var(--color-danger)" strokeDasharray="4 3" strokeOpacity={0.5} label={{ value: "severe", position: "right", fill: "var(--color-danger)", fontSize: 10 }} />
+                                  <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                                  <Area dataKey="inequality" type="monotone" fill={`url(#fillIneq-${tribe.id})`} stroke="var(--color-inequality)" strokeWidth={2} />
+                                </AreaChart>
+                              </ChartContainer>
                             </div>
 
                             {/* Communal Pool Chart */}
                             <div>
                               <SectionLabel>Communal Pool</SectionLabel>
-                              <LineChart
-                                data={tribe.economy.timeline}
-                                lines={[
-                                  { key: "communalFood", label: "Communal Food", color: "var(--color-success)" },
-                                  { key: "communalWealth", label: "Communal Wealth", color: "var(--color-warning)" },
-                                ]}
-                                xKey="turn"
-                                height={140}
-                              />
+                              <ChartContainer
+                                config={{
+                                  communalFood: { label: "Communal Food", color: "var(--color-success)" },
+                                  communalWealth: { label: "Communal Wealth", color: "var(--color-warning)" },
+                                } satisfies ChartConfig}
+                                className="min-h-[160px] w-full"
+                              >
+                                <AreaChart data={tribe.economy.timeline} accessibilityLayer>
+                                  <defs>
+                                    <linearGradient id={`fillCFood-${tribe.id}`} x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="var(--color-communalFood)" stopOpacity={0.3} />
+                                      <stop offset="100%" stopColor="var(--color-communalFood)" stopOpacity={0.02} />
+                                    </linearGradient>
+                                    <linearGradient id={`fillCWealth-${tribe.id}`} x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="var(--color-communalWealth)" stopOpacity={0.3} />
+                                      <stop offset="100%" stopColor="var(--color-communalWealth)" stopOpacity={0.02} />
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid vertical={false} />
+                                  <XAxis dataKey="turn" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(v) => `T${v}`} />
+                                  <YAxis tickLine={false} axisLine={false} tickMargin={8} width={32} />
+                                  <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                                  <ChartLegend content={<ChartLegendContent />} />
+                                  <Area dataKey="communalFood" type="monotone" fill={`url(#fillCFood-${tribe.id})`} stroke="var(--color-communalFood)" strokeWidth={2} />
+                                  <Area dataKey="communalWealth" type="monotone" fill={`url(#fillCWealth-${tribe.id})`} stroke="var(--color-communalWealth)" strokeWidth={2} />
+                                </AreaChart>
+                              </ChartContainer>
                             </div>
                           </>
                         ) : (
@@ -2199,241 +2276,3 @@ function InsightItem({
   );
 }
 
-// ── SVG Line Chart ──
-
-type LineConfig = {
-  key: string;
-  label: string;
-  color: string;
-};
-
-type ThresholdConfig = {
-  value: number;
-  label: string;
-  color: string;
-};
-
-function LineChart({
-  data,
-  lines,
-  xKey,
-  height = 160,
-  thresholds,
-}: {
-  data: Record<string, number>[];
-  lines: LineConfig[];
-  xKey: string;
-  height?: number;
-  thresholds?: ThresholdConfig[];
-}) {
-  if (data.length < 2) return null;
-
-  const PADDING = { top: 12, right: 12, bottom: 28, left: 40 };
-  const width = 700; // viewBox width, scales with container
-
-  const chartW = width - PADDING.left - PADDING.right;
-  const chartH = height - PADDING.top - PADDING.bottom;
-
-  // Compute global min/max across all lines
-  let globalMin = Infinity;
-  let globalMax = -Infinity;
-  for (const line of lines) {
-    for (const d of data) {
-      const v = d[line.key] ?? 0;
-      if (v < globalMin) globalMin = v;
-      if (v > globalMax) globalMax = v;
-    }
-  }
-  // Include thresholds in range
-  if (thresholds) {
-    for (const t of thresholds) {
-      if (t.value < globalMin) globalMin = t.value;
-      if (t.value > globalMax) globalMax = t.value;
-    }
-  }
-
-  // Add 10% padding to range
-  const range = globalMax - globalMin || 1;
-  const yMin = Math.max(0, globalMin - range * 0.1);
-  const yMax = globalMax + range * 0.1;
-
-  const xValues = data.map((d) => d[xKey]);
-  const xMin = xValues[0];
-  const xMax = xValues[xValues.length - 1];
-  const xRange = xMax - xMin || 1;
-
-  const toX = (v: number) => PADDING.left + ((v - xMin) / xRange) * chartW;
-  const toY = (v: number) => PADDING.top + (1 - (v - yMin) / (yMax - yMin)) * chartH;
-
-  // Y-axis ticks (4-5 nice ticks)
-  const yTicks: number[] = [];
-  const yStep = niceStep(yMin, yMax, 4);
-  const yTickStart = Math.ceil(yMin / yStep) * yStep;
-  for (let v = yTickStart; v <= yMax; v += yStep) {
-    yTicks.push(Math.round(v * 10) / 10);
-  }
-
-  // X-axis ticks
-  const xTicks: number[] = [];
-  const xStep = Math.max(1, Math.round(xRange / 6));
-  for (let v = xMin; v <= xMax; v += xStep) {
-    xTicks.push(v);
-  }
-  if (xTicks[xTicks.length - 1] !== xMax) xTicks.push(xMax);
-
-  return (
-    <div
-      className="rounded-lg p-4 relative"
-      style={{
-        background: "var(--color-surface-raised)",
-        border: "1px solid var(--color-border)",
-      }}
-    >
-      {/* Legend */}
-      <div className="flex gap-4 mb-2">
-        {lines.map((line) => (
-          <div key={line.key} className="flex items-center gap-1.5">
-            <div
-              className="w-2.5 h-[2px] rounded-full"
-              style={{ background: line.color }}
-            />
-            <span
-              className="font-mono text-[9px] uppercase tracking-wider"
-              style={{ color: "var(--color-text-dim)" }}
-            >
-              {line.label}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full"
-        style={{ overflow: "visible" }}
-      >
-        {/* Grid lines */}
-        {yTicks.map((v) => (
-          <g key={`grid-${v}`}>
-            <line
-              x1={PADDING.left}
-              y1={toY(v)}
-              x2={width - PADDING.right}
-              y2={toY(v)}
-              stroke="var(--color-border)"
-              strokeWidth={0.5}
-            />
-            <text
-              x={PADDING.left - 6}
-              y={toY(v)}
-              textAnchor="end"
-              dominantBaseline="middle"
-              fill="var(--color-text-dim)"
-              fontSize={8}
-              fontFamily="var(--font-mono)"
-            >
-              {v}
-            </text>
-          </g>
-        ))}
-
-        {/* X-axis labels */}
-        {xTicks.map((v) => (
-          <text
-            key={`x-${v}`}
-            x={toX(v)}
-            y={height - 4}
-            textAnchor="middle"
-            fill="var(--color-text-dim)"
-            fontSize={8}
-            fontFamily="var(--font-mono)"
-          >
-            T{v}
-          </text>
-        ))}
-
-        {/* Threshold lines */}
-        {thresholds?.map((t) => (
-          <g key={`thresh-${t.value}`}>
-            <line
-              x1={PADDING.left}
-              y1={toY(t.value)}
-              x2={width - PADDING.right}
-              y2={toY(t.value)}
-              stroke={t.color}
-              strokeWidth={0.75}
-              strokeDasharray="4 3"
-              opacity={0.5}
-            />
-            <text
-              x={width - PADDING.right + 4}
-              y={toY(t.value)}
-              dominantBaseline="middle"
-              fill={t.color}
-              fontSize={7}
-              fontFamily="var(--font-mono)"
-              opacity={0.6}
-            >
-              {t.label}
-            </text>
-          </g>
-        ))}
-
-        {/* Data lines */}
-        {lines.map((line) => {
-          const points = data
-            .map((d) => ({ x: toX(d[xKey]), y: toY(d[line.key] ?? 0) }))
-            .filter((p) => !isNaN(p.x) && !isNaN(p.y));
-
-          if (points.length < 2) return null;
-
-          const pathD = points
-            .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
-            .join(" ");
-
-          // Area fill
-          const areaD = `${pathD} L ${points[points.length - 1].x} ${PADDING.top + chartH} L ${points[0].x} ${PADDING.top + chartH} Z`;
-
-          return (
-            <g key={line.key}>
-              <path d={areaD} fill={line.color} opacity={0.05} />
-              <path
-                d={pathD}
-                fill="none"
-                stroke={line.color}
-                strokeWidth={1.5}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-              {/* Dots at data points (only if < 30 points) */}
-              {points.length < 30 &&
-                points.map((p, i) => (
-                  <circle
-                    key={i}
-                    cx={p.x}
-                    cy={p.y}
-                    r={2}
-                    fill={line.color}
-                    opacity={0.7}
-                  />
-                ))}
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
-
-function niceStep(min: number, max: number, targetTicks: number): number {
-  const range = max - min || 1;
-  const rough = range / targetTicks;
-  const pow = Math.pow(10, Math.floor(Math.log10(rough)));
-  const norm = rough / pow;
-  let step: number;
-  if (norm <= 1.5) step = 1;
-  else if (norm <= 3) step = 2;
-  else if (norm <= 7) step = 5;
-  else step = 10;
-  return step * pow;
-}

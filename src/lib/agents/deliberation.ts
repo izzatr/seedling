@@ -73,7 +73,9 @@ export async function runDeliberation(
   ];
 
   for (let round = 0; round < rounds; round++) {
-    const speakingOrder = shuffle(livingAgents);
+    // Not everyone speaks every round — cap at 10 speakers for large tribes
+    const MAX_SPEAKERS_PER_ROUND = 10;
+    const speakingOrder = shuffle(livingAgents).slice(0, MAX_SPEAKERS_PER_ROUND);
     const threadSnapshot = threadLines.join("\n\n");
 
     // ── Agents speak in batches ──

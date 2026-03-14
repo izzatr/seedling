@@ -208,18 +208,25 @@ export default function SimulationPage() {
 
   // Actions
   async function handleStart() {
+    // Optimistically update status so button disappears immediately
+    setState((prev) =>
+      prev ? { ...prev, simulation: { ...prev.simulation, status: "running" } } : prev
+    );
     await fetch(`/api/simulation/${simulationId}/start`, { method: "POST" });
-    fetchState();
   }
 
   async function handlePause() {
+    setState((prev) =>
+      prev ? { ...prev, simulation: { ...prev.simulation, status: "paused" } } : prev
+    );
     await fetch(`/api/simulation/${simulationId}/pause`, { method: "POST" });
-    fetchState();
   }
 
   async function handleStop() {
+    setState((prev) =>
+      prev ? { ...prev, simulation: { ...prev.simulation, status: "completed" } } : prev
+    );
     await fetch(`/api/simulation/${simulationId}/stop`, { method: "POST" });
-    fetchState();
   }
 
   function handleReport() {
