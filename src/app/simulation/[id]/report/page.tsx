@@ -100,6 +100,19 @@ type TribeReport = {
     inequality: number;
     starvationDeaths: number;
     scarcityEvents: number;
+    timeline: {
+      turn: number;
+      population: number;
+      avgFood: number;
+      avgWealth: number;
+      totalFood: number;
+      totalWealth: number;
+      hungry: number;
+      starving: number;
+      communalFood: number;
+      communalWealth: number;
+      inequality: number;
+    }[];
   };
   foundingRules: TribeRule[];
   currentRules: TribeRule[];
@@ -601,6 +614,7 @@ export default function ReportPage() {
 
           const tabs = [
             { key: "overview", label: "Overview" },
+            { key: "economy", label: "Economy" },
             { key: "rules", label: "Rules" },
             { key: "events", label: "Events" },
             { key: "agents", label: "Agents" },
@@ -1136,6 +1150,82 @@ export default function ReportPage() {
                               </div>
                             </div>
                           </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── Economy Tab ── */}
+                    {section === "economy" && (
+                      <div className="space-y-6">
+                        {tribe.economy.timeline.length > 0 ? (
+                          <>
+                            {/* Food & Wealth Chart */}
+                            <div>
+                              <SectionLabel>Food & Wealth Over Time</SectionLabel>
+                              <LineChart
+                                data={tribe.economy.timeline}
+                                lines={[
+                                  { key: "avgFood", label: "Avg Food", color: "var(--color-success)" },
+                                  { key: "avgWealth", label: "Avg Wealth", color: "var(--color-warning)" },
+                                ]}
+                                xKey="turn"
+                                height={180}
+                              />
+                            </div>
+
+                            {/* Population & Hunger Chart */}
+                            <div>
+                              <SectionLabel>Population & Hunger</SectionLabel>
+                              <LineChart
+                                data={tribe.economy.timeline}
+                                lines={[
+                                  { key: "population", label: "Population", color: colors.accent },
+                                  { key: "hungry", label: "Hungry", color: "var(--color-warning)" },
+                                  { key: "starving", label: "Starving", color: "var(--color-danger)" },
+                                ]}
+                                xKey="turn"
+                                height={180}
+                              />
+                            </div>
+
+                            {/* Inequality Chart */}
+                            <div>
+                              <SectionLabel>Wealth Inequality (Gini %)</SectionLabel>
+                              <LineChart
+                                data={tribe.economy.timeline}
+                                lines={[
+                                  { key: "inequality", label: "Inequality", color: "var(--color-info)" },
+                                ]}
+                                xKey="turn"
+                                height={140}
+                                thresholds={[
+                                  { value: 35, label: "moderate", color: "var(--color-warning)" },
+                                  { value: 60, label: "severe", color: "var(--color-danger)" },
+                                ]}
+                              />
+                            </div>
+
+                            {/* Communal Pool Chart */}
+                            <div>
+                              <SectionLabel>Communal Pool</SectionLabel>
+                              <LineChart
+                                data={tribe.economy.timeline}
+                                lines={[
+                                  { key: "communalFood", label: "Communal Food", color: "var(--color-success)" },
+                                  { key: "communalWealth", label: "Communal Wealth", color: "var(--color-warning)" },
+                                ]}
+                                xKey="turn"
+                                height={140}
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <p
+                            className="text-xs italic"
+                            style={{ color: "var(--color-text-dim)" }}
+                          >
+                            No economic data recorded
+                          </p>
                         )}
                       </div>
                     )}
@@ -2107,4 +2197,243 @@ function InsightItem({
       {text}
     </p>
   );
+}
+
+// ── SVG Line Chart ──
+
+type LineConfig = {
+  key: string;
+  label: string;
+  color: string;
+};
+
+type ThresholdConfig = {
+  value: number;
+  label: string;
+  color: string;
+};
+
+function LineChart({
+  data,
+  lines,
+  xKey,
+  height = 160,
+  thresholds,
+}: {
+  data: Record<string, number>[];
+  lines: LineConfig[];
+  xKey: string;
+  height?: number;
+  thresholds?: ThresholdConfig[];
+}) {
+  if (data.length < 2) return null;
+
+  const PADDING = { top: 12, right: 12, bottom: 28, left: 40 };
+  const width = 700; // viewBox width, scales with container
+
+  const chartW = width - PADDING.left - PADDING.right;
+  const chartH = height - PADDING.top - PADDING.bottom;
+
+  // Compute global min/max across all lines
+  let globalMin = Infinity;
+  let globalMax = -Infinity;
+  for (const line of lines) {
+    for (const d of data) {
+      const v = d[line.key] ?? 0;
+      if (v < globalMin) globalMin = v;
+      if (v > globalMax) globalMax = v;
+    }
+  }
+  // Include thresholds in range
+  if (thresholds) {
+    for (const t of thresholds) {
+      if (t.value < globalMin) globalMin = t.value;
+      if (t.value > globalMax) globalMax = t.value;
+    }
+  }
+
+  // Add 10% padding to range
+  const range = globalMax - globalMin || 1;
+  const yMin = Math.max(0, globalMin - range * 0.1);
+  const yMax = globalMax + range * 0.1;
+
+  const xValues = data.map((d) => d[xKey]);
+  const xMin = xValues[0];
+  const xMax = xValues[xValues.length - 1];
+  const xRange = xMax - xMin || 1;
+
+  const toX = (v: number) => PADDING.left + ((v - xMin) / xRange) * chartW;
+  const toY = (v: number) => PADDING.top + (1 - (v - yMin) / (yMax - yMin)) * chartH;
+
+  // Y-axis ticks (4-5 nice ticks)
+  const yTicks: number[] = [];
+  const yStep = niceStep(yMin, yMax, 4);
+  const yTickStart = Math.ceil(yMin / yStep) * yStep;
+  for (let v = yTickStart; v <= yMax; v += yStep) {
+    yTicks.push(Math.round(v * 10) / 10);
+  }
+
+  // X-axis ticks
+  const xTicks: number[] = [];
+  const xStep = Math.max(1, Math.round(xRange / 6));
+  for (let v = xMin; v <= xMax; v += xStep) {
+    xTicks.push(v);
+  }
+  if (xTicks[xTicks.length - 1] !== xMax) xTicks.push(xMax);
+
+  return (
+    <div
+      className="rounded-lg p-4 relative"
+      style={{
+        background: "var(--color-surface-raised)",
+        border: "1px solid var(--color-border)",
+      }}
+    >
+      {/* Legend */}
+      <div className="flex gap-4 mb-2">
+        {lines.map((line) => (
+          <div key={line.key} className="flex items-center gap-1.5">
+            <div
+              className="w-2.5 h-[2px] rounded-full"
+              style={{ background: line.color }}
+            />
+            <span
+              className="font-mono text-[9px] uppercase tracking-wider"
+              style={{ color: "var(--color-text-dim)" }}
+            >
+              {line.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full"
+        style={{ overflow: "visible" }}
+      >
+        {/* Grid lines */}
+        {yTicks.map((v) => (
+          <g key={`grid-${v}`}>
+            <line
+              x1={PADDING.left}
+              y1={toY(v)}
+              x2={width - PADDING.right}
+              y2={toY(v)}
+              stroke="var(--color-border)"
+              strokeWidth={0.5}
+            />
+            <text
+              x={PADDING.left - 6}
+              y={toY(v)}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fill="var(--color-text-dim)"
+              fontSize={8}
+              fontFamily="var(--font-mono)"
+            >
+              {v}
+            </text>
+          </g>
+        ))}
+
+        {/* X-axis labels */}
+        {xTicks.map((v) => (
+          <text
+            key={`x-${v}`}
+            x={toX(v)}
+            y={height - 4}
+            textAnchor="middle"
+            fill="var(--color-text-dim)"
+            fontSize={8}
+            fontFamily="var(--font-mono)"
+          >
+            T{v}
+          </text>
+        ))}
+
+        {/* Threshold lines */}
+        {thresholds?.map((t) => (
+          <g key={`thresh-${t.value}`}>
+            <line
+              x1={PADDING.left}
+              y1={toY(t.value)}
+              x2={width - PADDING.right}
+              y2={toY(t.value)}
+              stroke={t.color}
+              strokeWidth={0.75}
+              strokeDasharray="4 3"
+              opacity={0.5}
+            />
+            <text
+              x={width - PADDING.right + 4}
+              y={toY(t.value)}
+              dominantBaseline="middle"
+              fill={t.color}
+              fontSize={7}
+              fontFamily="var(--font-mono)"
+              opacity={0.6}
+            >
+              {t.label}
+            </text>
+          </g>
+        ))}
+
+        {/* Data lines */}
+        {lines.map((line) => {
+          const points = data
+            .map((d) => ({ x: toX(d[xKey]), y: toY(d[line.key] ?? 0) }))
+            .filter((p) => !isNaN(p.x) && !isNaN(p.y));
+
+          if (points.length < 2) return null;
+
+          const pathD = points
+            .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+            .join(" ");
+
+          // Area fill
+          const areaD = `${pathD} L ${points[points.length - 1].x} ${PADDING.top + chartH} L ${points[0].x} ${PADDING.top + chartH} Z`;
+
+          return (
+            <g key={line.key}>
+              <path d={areaD} fill={line.color} opacity={0.05} />
+              <path
+                d={pathD}
+                fill="none"
+                stroke={line.color}
+                strokeWidth={1.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              {/* Dots at data points (only if < 30 points) */}
+              {points.length < 30 &&
+                points.map((p, i) => (
+                  <circle
+                    key={i}
+                    cx={p.x}
+                    cy={p.y}
+                    r={2}
+                    fill={line.color}
+                    opacity={0.7}
+                  />
+                ))}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function niceStep(min: number, max: number, targetTicks: number): number {
+  const range = max - min || 1;
+  const rough = range / targetTicks;
+  const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough / pow;
+  let step: number;
+  if (norm <= 1.5) step = 1;
+  else if (norm <= 3) step = 2;
+  else if (norm <= 7) step = 5;
+  else step = 10;
+  return step * pow;
 }

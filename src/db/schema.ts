@@ -162,6 +162,28 @@ export const turnEvents = pgTable("turn_events", {
   effects: jsonb("effects").$type<EventEffects>().notNull(),
 });
 
+export const economySnapshots = pgTable("economy_snapshots", {
+  id: text("id").primaryKey(),
+  turnId: text("turn_id")
+    .notNull()
+    .references(() => turns.id),
+  tribeId: text("tribe_id")
+    .notNull()
+    .references(() => tribes.id),
+  turnNumber: integer("turn_number").notNull(),
+  population: integer("population").notNull(),
+  avgFood: real("avg_food").notNull(),
+  avgWealth: real("avg_wealth").notNull(),
+  totalFood: real("total_food").notNull(),
+  totalWealth: real("total_wealth").notNull(),
+  hungryCount: integer("hungry_count").notNull(),
+  starvingCount: integer("starving_count").notNull(),
+  communalFood: real("communal_food").notNull(),
+  communalWealth: real("communal_wealth").notNull(),
+  inequality: real("inequality").notNull(), // Gini coefficient 0-1
+  contributionRate: real("contribution_rate").notNull(),
+});
+
 export const ruleChanges = pgTable("rule_changes", {
   id: text("id").primaryKey(),
   turnId: text("turn_id")

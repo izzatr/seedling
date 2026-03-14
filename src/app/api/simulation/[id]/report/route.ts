@@ -11,6 +11,7 @@ import {
   turns,
   deliberationThreads,
   tribeContacts,
+  economySnapshots,
   type TribeRule,
   type VoteRecord,
   type EventEffects,
@@ -60,7 +61,7 @@ export async function GET(
 
   const report = await Promise.all(
     allTribes.map(async (tribe) => {
-      const [tribeAgents, changes, events, threads] = await Promise.all([
+      const [tribeAgents, changes, events, threads, snapshots] = await Promise.all([
         db.select().from(agents).where(eq(agents.tribeId, tribe.id)),
         db.select().from(ruleChanges).where(eq(ruleChanges.tribeId, tribe.id)),
         db.select().from(turnEvents).where(eq(turnEvents.tribeId, tribe.id)),
@@ -68,6 +69,10 @@ export async function GET(
           .select()
           .from(deliberationThreads)
           .where(eq(deliberationThreads.tribeId, tribe.id)),
+        db
+          .select()
+          .from(economySnapshots)
+          .where(eq(economySnapshots.tribeId, tribe.id)),
       ]);
 
       const drift = calculateDrift(
@@ -370,6 +375,21 @@ export async function GET(
           inequality: Math.round(gini * 100),
           starvationDeaths,
           scarcityEvents,
+          timeline: snapshots
+            .sort((a, b) => a.turnNumber - b.turnNumber)
+            .map((s) => ({
+              turn: s.turnNumber,
+              population: s.population,
+              avgFood: Math.round(s.avgFood * 10) / 10,
+              avgWealth: Math.round(s.avgWealth * 10) / 10,
+              totalFood: Math.round(s.totalFood),
+              totalWealth: Math.round(s.totalWealth),
+              hungry: s.hungryCount,
+              starving: s.starvingCount,
+              communalFood: Math.round(s.communalFood),
+              communalWealth: Math.round(s.communalWealth),
+              inequality: Math.round(s.inequality * 100),
+            })),
         },
       };
     })

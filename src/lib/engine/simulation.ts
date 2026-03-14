@@ -58,7 +58,7 @@ async function processTribeTurn(
   }
 
   // 2. Economy — production, contribution, distribution, consumption
-  const economy = await processEconomy(simulationId, tribe.id, turn);
+  const economy = await processEconomy(simulationId, tribe.id, turnId, turn);
 
   // 3. Deaths (natural + starvation) + Births
   const [naturalDeaths, starvationDeaths, births] = await Promise.all([
@@ -201,21 +201,38 @@ async function processTribeTurn(
         });
 
         if (voteResult.passed) {
-          passedProposals.push(proposal.ruleText);
+          passedProposals.push(proposal.action === "remove" ? `REMOVED: "${proposal.ruleText}"` : proposal.ruleText);
           const currentRules = tribe.rules as TribeRule[];
-          const newRules = proposal.replacesRule
-            ? currentRules.map((r) =>
-                r.text === proposal.replacesRule
-                  ? { domain: proposal.domain as TribeRule["domain"], text: proposal.ruleText }
-                  : r
-              )
-            : [...currentRules, { domain: proposal.domain as TribeRule["domain"], text: proposal.ruleText }];
+          let newRules: TribeRule[];
+
+          if (proposal.action === "remove") {
+            // Remove the rule (fuzzy match — find closest)
+            const target = proposal.ruleText.toLowerCase();
+            newRules = currentRules.filter((r) => !r.text.toLowerCase().includes(target) && target !== r.text.toLowerCase());
+            if (newRules.length === currentRules.length) {
+              // Fuzzy: remove first rule containing key words
+              const words = target.split(/\s+/).filter((w) => w.length > 4);
+              newRules = currentRules.filter((r) => !words.some((w) => r.text.toLowerCase().includes(w)));
+            }
+          } else if (proposal.action === "replace" && proposal.replacesRule) {
+            const target = proposal.replacesRule.toLowerCase();
+            newRules = currentRules.map((r) =>
+              r.text.toLowerCase().includes(target) || target.includes(r.text.toLowerCase())
+                ? { domain: proposal.domain as TribeRule["domain"], text: proposal.ruleText }
+                : r
+            );
+          } else {
+            // Add
+            newRules = [...currentRules, { domain: proposal.domain as TribeRule["domain"], text: proposal.ruleText }];
+          }
 
           await db.update(tribes).set({ rules: newRules }).where(eq(tribes.id, tribe.id));
 
           broadcast(simulationId, "happening", {
             type: "rule_change", tribeId: tribe.id, tribeName: tribe.name,
-            newRule: proposal.ruleText, domain: proposal.domain, passed: true, turn,
+            newRule: proposal.action === "remove" ? `REMOVED: ${proposal.ruleText}` : proposal.ruleText,
+            domain: proposal.domain, passed: true, turn,
+            action: proposal.action,
           });
         }
       }
@@ -276,13 +293,13 @@ export async function startSimulationLoop(simulationId: string): Promise<void> {
 
       const allTribes = await db.select().from(tribes).where(eq(tribes.simulationId, simulationId));
 
-      // ── Process tribes SEQUENTIALLY to avoid HuggingFace rate limits ──
-      // (agents within each tribe still run in parallel)
-      // Process tribes sequentially (agents within each tribe run in parallel batches)
-      for (const tribe of allTribes) {
-        if (controller.signal.aborted) break;
-        await processTribeTurn(simulationId, tribe, turnId, turn, generation, turnType);
-      }
+      // ── Process ALL 4 tribes in parallel ──
+      // Gemini Flash Lite: 4K RPM, 4M TPM — 4 tribes x 5 agent batch = 20 concurrent calls is safe
+      await Promise.all(
+        allTribes.map((tribe) =>
+          processTribeTurn(simulationId, tribe, turnId, turn, generation, turnType)
+        )
+      );
 
       if (turnType === "milestone") {
         await db.update(simulations).set({ currentGeneration: generation }).where(eq(simulations.id, simulationId));

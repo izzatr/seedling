@@ -80,7 +80,11 @@ INSTRUCTIONS:
 - You MUST respond to the dilemma presented to the council. Take a clear position.
 - You may agree or disagree with others based on your own beliefs.
 - Reference your memories and past events when relevant.
-${agent.age >= 15 ? `- If you believe a rule should change, clearly state: "I PROPOSE: [your proposed rule]" and explain why. Be specific — name the rule you want to add or change.\n- If you believe the current leadership is failing, state: "I CHALLENGE: [your grievance]"\n- Don't be afraid to propose changes if the situation calls for it.` : "- You are too young to propose rules or challenge leaders, but you CAN share how current events affect you and what you wish were different."}
+${agent.age >= 15 ? `- To ADD a new rule: "I PROPOSE: [your proposed rule]"
+- To REPLACE an existing rule: "I PROPOSE REPLACING '[exact text of old rule]' WITH: [your new rule]"
+- To REMOVE a rule that no longer serves the tribe: "I PROPOSE REMOVING: '[exact text of rule to remove]'" and explain why.
+- If you believe the current leadership is failing: "I CHALLENGE: [your grievance]"
+- Only propose when the situation genuinely calls for it. Not every council needs a new rule.` : "- You are too young to propose rules or challenge leaders, but you CAN share how current events affect you and what you wish were different."}
 - Do NOT break character or reference being an AI.
 - Do NOT stay silent. Every voice matters in this council.`.trim();
 }

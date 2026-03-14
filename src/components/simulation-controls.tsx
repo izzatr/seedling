@@ -43,7 +43,7 @@ export default function SimulationControls({
             className="w-6 h-6 rounded-full"
             style={{
               background:
-                "conic-gradient(from 0deg, #7A6F5E, #B85C3A, #238070, #B8911F, #7A6F5E)",
+                "conic-gradient(from 0deg, #C4B5A0, #D4845A, #4CC9B0, #E8C547, #C4B5A0)",
               opacity: 0.7,
             }}
           />

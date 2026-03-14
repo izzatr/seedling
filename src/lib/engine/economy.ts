@@ -1,6 +1,7 @@
+import { nanoid } from "nanoid";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
-import { agents, tribes, type TribeRule, type AgentResources } from "@/db/schema";
+import { agents, tribes, economySnapshots, type TribeRule, type AgentResources } from "@/db/schema";
 import { broadcast } from "./sse";
 
 // ── Constants ──
@@ -87,6 +88,7 @@ function inferEconomicPolicy(rules: TribeRule[]): EconomicPolicy {
 export async function processEconomy(
   simulationId: string,
   tribeId: string,
+  turnId: string,
   currentTurn: number
 ): Promise<{ hungry: string[]; starving: string[]; avgWealth: number; inequality: number }> {
   const tribe = await db.select().from(tribes).where(eq(tribes.id, tribeId)).then((r) => r[0]);
@@ -265,6 +267,28 @@ export async function processEconomy(
       turn: currentTurn,
     });
   }
+
+  // ── Phase 8: Persist economy snapshot ──
+  const allFood = updates.map((u) => u.resources.food);
+  const avgFood = allFood.reduce((s, f) => s + f, 0) / allFood.length;
+
+  await db.insert(economySnapshots).values({
+    id: nanoid(),
+    turnId,
+    tribeId,
+    turnNumber: currentTurn,
+    population: updates.length,
+    avgFood: Math.round(avgFood * 10) / 10,
+    avgWealth: Math.round(avgWealth * 10) / 10,
+    totalFood: Math.round(allFood.reduce((s, f) => s + f, 0) * 10) / 10,
+    totalWealth: Math.round(totalWealth * 10) / 10,
+    hungryCount: hungry.length,
+    starvingCount: starving.length,
+    communalFood: Math.max(0, poolFood),
+    communalWealth: Math.max(0, poolWealth),
+    inequality: Math.round(inequality * 1000) / 1000,
+    contributionRate: policy.contributionRate,
+  });
 
   return { hungry, starving, avgWealth, inequality };
 }

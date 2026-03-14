@@ -29,6 +29,7 @@ export type Proposal = {
   domain: string;
   justification: string;
   replacesRule?: string;
+  action: "add" | "replace" | "remove";
 };
 
 export type Challenge = {
@@ -77,7 +78,7 @@ export async function runDeliberation(
 
     // ── Agents speak in batches ──
     // Gemini 2.5 Flash Lite has 4K RPM — can handle larger batches
-    const BATCH_SIZE = 5;
+    const BATCH_SIZE = 10;
     const roundResults: { agent: AgentForDelib; text: string }[] = [];
 
     for (let b = 0; b < speakingOrder.length; b += BATCH_SIZE) {
@@ -134,15 +135,39 @@ export async function runDeliberation(
         round,
       });
 
-      // Parse proposals
-      const proposalMatch = text.match(/I PROPOSE:\s*(.+?)(?:\.|$)/i);
-      if (proposalMatch) {
+      // Parse proposals — add, replace, or remove
+      const removeMatch = text.match(/I PROPOSE REMOVING:\s*['"](.+?)['"]/i);
+      const replaceMatch = text.match(/I PROPOSE REPLACING\s*['"](.+?)['"]\s*WITH:\s*(.+?)(?:\.|$)/i);
+      const addMatch = text.match(/I PROPOSE:\s*(.+?)(?:\.|$)/i);
+
+      if (removeMatch) {
         proposals.push({
           agentId: agent.id,
           agentName: agent.name,
-          ruleText: proposalMatch[1].trim(),
-          domain: guessRuleDomain(proposalMatch[1]),
+          ruleText: removeMatch[1].trim(),
+          replacesRule: removeMatch[1].trim(),
+          domain: guessRuleDomain(removeMatch[1]),
           justification: text,
+          action: "remove",
+        });
+      } else if (replaceMatch) {
+        proposals.push({
+          agentId: agent.id,
+          agentName: agent.name,
+          ruleText: replaceMatch[2].trim(),
+          replacesRule: replaceMatch[1].trim(),
+          domain: guessRuleDomain(replaceMatch[2]),
+          justification: text,
+          action: "replace",
+        });
+      } else if (addMatch) {
+        proposals.push({
+          agentId: agent.id,
+          agentName: agent.name,
+          ruleText: addMatch[1].trim(),
+          domain: guessRuleDomain(addMatch[1]),
+          justification: text,
+          action: "add",
         });
       }
 
