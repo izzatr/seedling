@@ -8,7 +8,7 @@ const TRIBES = [
     name: "The Keepers",
     tagline: "Guardians of the immutable",
     governance: "Council of Elders",
-    threshold: "95%",
+    threshold: "85%",
     magnitude: "Minor clarifications only",
     philosophy:
       "Our ancestors' wisdom is absolute. What they established, we preserve.",
