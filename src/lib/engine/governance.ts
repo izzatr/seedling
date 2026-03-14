@@ -78,8 +78,20 @@ export async function runVote(
     };
   }
 
-  // Run individual votes in parallel
-  const votePromises = agents.map(async (agent): Promise<VoteRecord> => {
+  // Sample voters for large tribes to stay within API limits
+  // Shuffle and take up to 10 voters — representative sample
+  const MAX_VOTERS = 10;
+  const voters = agents.length <= MAX_VOTERS
+    ? agents
+    : [...agents].sort(() => Math.random() - 0.5).slice(0, MAX_VOTERS);
+
+  // Run votes in small batches with delays
+  const voteResults: VoteRecord[] = [];
+  const VOTE_BATCH = 3;
+  for (let i = 0; i < voters.length; i += VOTE_BATCH) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 1500));
+    const batch = voters.slice(i, i + VOTE_BATCH);
+    const batchResults = await Promise.all(batch.map(async (agent): Promise<VoteRecord> => {
     try {
       const soul = buildVoterSoul(agent, tribe, {
         ruleText: proposal.ruleText,
@@ -119,15 +131,15 @@ export async function runVote(
         reasoning: "Failed to reach a decision.",
       };
     }
-  });
-
-  const votes = await Promise.all(votePromises);
+  }));
+    voteResults.push(...batchResults);
+  }
 
   // Tally
-  const approvals = votes.filter((v) => v.decision === "approve").length;
-  const total = votes.filter((v) => v.decision !== "abstain").length;
+  const approvals = voteResults.filter((v) => v.decision === "approve").length;
+  const total = voteResults.filter((v) => v.decision !== "abstain").length;
   const approvalRate = total > 0 ? approvals / total : 0;
   const passed = approvalRate >= tribe.votingThreshold;
 
-  return { passed, votes };
+  return { passed, votes: voteResults };
 }

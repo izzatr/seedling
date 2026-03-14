@@ -80,15 +80,49 @@ INSTRUCTIONS:
 - You MUST respond to the dilemma presented to the council. Take a clear position.
 - You may agree or disagree with others based on your own beliefs.
 - Reference your memories and past events when relevant.
-${agent.age >= 15 ? `- MOST OF THE TIME, just share your opinion. Discuss, agree, disagree, argue. That's what councils are for.
-- ONLY propose a rule change if you feel STRONGLY that something must change. Most councils should end with NO proposals.
+${agent.age >= 15 ? `- Share your opinion on the dilemma. Agree, disagree, argue — but stay true to WHO YOU ARE.
+- ${getProposalGuidance(agent.personality)}
+- If you see a problem with an EXISTING rule, propose changing it. Don't just add new rules — fix or replace the ones that aren't working.
+- If a rule has ALREADY been proposed or exists, do NOT re-propose it. Push for something DIFFERENT.
 - To ADD a new rule: "I PROPOSE: [your proposed rule]"
 - To REPLACE an existing rule: "I PROPOSE REPLACING '[exact text of old rule]' WITH: [your new rule]"
-- To REMOVE a rule: "I PROPOSE REMOVING: '[exact text of rule to remove]'"
-- If you believe leadership is failing: "I CHALLENGE: [your grievance]"
-- Do NOT propose something just because you can. Proposals are serious and rare.` : "- You are too young to propose rules or challenge leaders, but you CAN share how current events affect you and what you wish were different."}
+- To REMOVE a rule that harms the tribe: "I PROPOSE REMOVING: '[exact text of rule to remove]'"
+- If leadership is failing the tribe: "I CHALLENGE: [your grievance]"
+- Think about what rules are CAUSING the tribe's problems, not just what new rules to add.` : "- You are too young to propose rules or challenge leaders, but you CAN share how current events affect you and what you wish were different."}
 - Do NOT break character or reference being an AI.
 - Do NOT stay silent. Every voice matters in this council.`.trim();
+}
+
+function getProposalGuidance(personality: string[]): string {
+  const traits = new Set(personality.map((t) => t.toLowerCase()));
+
+  // Rebels and innovators push for change
+  if (traits.has("rebellious") || traits.has("bold") || traits.has("impulsive") || traits.has("passionate")) {
+    return "You are naturally inclined to challenge the status quo. If something is broken, you speak up loudly and push for radical change. You don't accept 'that's how it's always been' as an answer.";
+  }
+
+  // Traditionalists resist change
+  if (traits.has("traditional") || traits.has("cautious") || traits.has("devout") || traits.has("conservative") || traits.has("stoic")) {
+    return "You are naturally cautious about change. You defend existing rules and traditions. You only support changes when there is overwhelming evidence that the old way has failed — and even then, you prefer small adjustments over radical shifts.";
+  }
+
+  // Pragmatists evaluate based on evidence
+  if (traits.has("pragmatic") || traits.has("analytical") || traits.has("practical") || traits.has("resourceful")) {
+    return "You judge proposals on their practical merits, not ideology. If a rule is clearly failing — people are hungry, resources are wasted — you support changing it. If it works, you defend it. Evidence matters more than tradition or novelty.";
+  }
+
+  // Empaths focus on people
+  if (traits.has("empathetic") || traits.has("compassionate") || traits.has("gentle") || traits.has("nurturing")) {
+    return "You care most about how rules affect real people. If someone is suffering because of a rule, you want it changed. You advocate for the vulnerable — children, the elderly, the hungry. Rules should serve people, not the other way around.";
+  }
+
+  // Creatives and visionaries imagine new possibilities
+  if (traits.has("creative") || traits.has("visionary") || traits.has("innovative") || traits.has("curious")) {
+    return "You see possibilities others don't. When a problem arises, you imagine entirely new solutions rather than tweaking the old ones. You're not afraid to propose something no one has tried before.";
+  }
+
+  // Default: balanced
+  return "You weigh tradition against progress. Propose changes when you genuinely believe they'll help the tribe, but respect what has worked in the past.";
 }
 
 function getAgeContext(age: number): string {

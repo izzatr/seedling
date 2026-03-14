@@ -40,6 +40,11 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Return cached report if available
+  if (sim.cachedReport) {
+    return NextResponse.json(sim.cachedReport);
+  }
+
   const allTribes = await db
     .select()
     .from(tribes)
@@ -467,7 +472,7 @@ export async function GET(
     // Gracefully degrade — report still works without narratives
   }
 
-  return NextResponse.json({
+  const reportData = {
     simulation: {
       id: sim.id,
       name: sim.name,
@@ -480,5 +485,13 @@ export async function GET(
     contacts: contactReport,
     worldHistory,
     divergenceAnalysis,
-  });
+  };
+
+  // Cache the report in DB so subsequent loads are instant
+  await db
+    .update(simulations)
+    .set({ cachedReport: reportData })
+    .where(eq(simulations.id, id));
+
+  return NextResponse.json(reportData);
 }

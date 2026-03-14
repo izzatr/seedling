@@ -159,11 +159,11 @@ type ReportData = {
 
 // ── Constants ──
 
-const TRIBE_COLORS: Record<string, { accent: string; bg: string; glow: string }> = {
-  "The Keepers": { accent: "var(--color-keepers-accent)", bg: "rgba(196, 181, 160, 0.08)", glow: "rgba(196, 181, 160, 0.15)" },
-  "The Moderates": { accent: "var(--color-moderates-accent)", bg: "rgba(212, 132, 90, 0.08)", glow: "rgba(212, 132, 90, 0.15)" },
-  "The Adapters": { accent: "var(--color-adapters-accent)", bg: "rgba(76, 201, 176, 0.08)", glow: "rgba(76, 201, 176, 0.15)" },
-  "The Free": { accent: "var(--color-free-accent)", bg: "rgba(232, 197, 71, 0.08)", glow: "rgba(232, 197, 71, 0.15)" },
+const TRIBE_COLORS: Record<string, { accent: string; bg: string; glow: string; hex: string }> = {
+  "The Keepers": { accent: "var(--color-keepers-accent)", bg: "rgba(196, 181, 160, 0.08)", glow: "rgba(196, 181, 160, 0.15)", hex: "#7A6F5E" },
+  "The Moderates": { accent: "var(--color-moderates-accent)", bg: "rgba(212, 132, 90, 0.08)", glow: "rgba(212, 132, 90, 0.15)", hex: "#B85C3A" },
+  "The Adapters": { accent: "var(--color-adapters-accent)", bg: "rgba(76, 201, 176, 0.08)", glow: "rgba(76, 201, 176, 0.15)", hex: "#238070" },
+  "The Free": { accent: "var(--color-free-accent)", bg: "rgba(232, 197, 71, 0.08)", glow: "rgba(232, 197, 71, 0.15)", hex: "#B8911F" },
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -616,6 +616,215 @@ export default function ReportPage() {
           })}
         </div>
       </div>
+
+      {/* ── Cross-Tribe Comparison Charts ── */}
+      {(() => {
+        // Merge all tribe timelines into unified turn-keyed data
+        const hasTimelines = report.tribes.some(
+          (t) => t.economy.timeline.length > 1
+        );
+        if (!hasTimelines) return null;
+
+        // Build merged data: one row per turn with columns per tribe
+        const turnSet = new Set<number>();
+        for (const tribe of report.tribes) {
+          for (const snap of tribe.economy.timeline) {
+            turnSet.add(snap.turn);
+          }
+        }
+        const allTurns = [...turnSet].sort((a, b) => a - b);
+
+        // Build lookup per tribe
+        const tribeLookups = report.tribes.map((tribe) => {
+          const lookup = new Map<number, (typeof tribe.economy.timeline)[0]>();
+          for (const snap of tribe.economy.timeline) {
+            lookup.set(snap.turn, snap);
+          }
+          const shortName = tribe.name.replace("The ", "");
+          return { tribe, shortName, lookup };
+        });
+
+        const mergedData = allTurns.map((turn) => {
+          const row: Record<string, number> = { turn };
+          for (const { shortName, lookup } of tribeLookups) {
+            const snap = lookup.get(turn);
+            if (snap) {
+              row[`${shortName}_pop`] = snap.population;
+              row[`${shortName}_food`] = snap.avgFood;
+              row[`${shortName}_wealth`] = snap.avgWealth;
+              row[`${shortName}_ineq`] = snap.inequality;
+              row[`${shortName}_hungry`] = snap.hungry;
+            }
+          }
+          return row;
+        });
+
+        // Build chart configs
+        const popConfig: ChartConfig = {};
+        const foodConfig: ChartConfig = {};
+        const wealthConfig: ChartConfig = {};
+        const ineqConfig: ChartConfig = {};
+        for (const { tribe, shortName } of tribeLookups) {
+          const hex = TRIBE_COLORS[tribe.name]?.hex || "#888";
+          popConfig[`${shortName}_pop`] = { label: shortName, color: hex };
+          foodConfig[`${shortName}_food`] = { label: shortName, color: hex };
+          wealthConfig[`${shortName}_wealth`] = { label: shortName, color: hex };
+          ineqConfig[`${shortName}_ineq`] = { label: shortName, color: hex };
+        }
+
+        return (
+          <div className="mb-10 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+            <SectionLabel>Cross-Tribe Comparison</SectionLabel>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Population */}
+              <div
+                className="rounded-xl p-5"
+                style={{
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                }}
+              >
+                <h4
+                  className="font-mono text-[10px] uppercase tracking-wider mb-3"
+                  style={{ color: "var(--color-text-dim)" }}
+                >
+                  Population
+                </h4>
+                <ChartContainer config={popConfig} className="min-h-[200px] w-full">
+                  <AreaChart data={mergedData} accessibilityLayer>
+                    <defs>
+                      {tribeLookups.map(({ shortName }) => (
+                        <linearGradient key={shortName} id={`cmp-pop-${shortName}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={`var(--color-${shortName}_pop)`} stopOpacity={0.15} />
+                          <stop offset="100%" stopColor={`var(--color-${shortName}_pop)`} stopOpacity={0.01} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="turn" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(v) => `T${v}`} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} width={28} allowDecimals={false} />
+                    <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    {tribeLookups.map(({ shortName }) => (
+                      <Area key={shortName} dataKey={`${shortName}_pop`} type="monotone" fill={`url(#cmp-pop-${shortName})`} stroke={`var(--color-${shortName}_pop)`} strokeWidth={2} connectNulls />
+                    ))}
+                  </AreaChart>
+                </ChartContainer>
+              </div>
+
+              {/* Avg Food */}
+              <div
+                className="rounded-xl p-5"
+                style={{
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                }}
+              >
+                <h4
+                  className="font-mono text-[10px] uppercase tracking-wider mb-3"
+                  style={{ color: "var(--color-text-dim)" }}
+                >
+                  Average Food
+                </h4>
+                <ChartContainer config={foodConfig} className="min-h-[200px] w-full">
+                  <AreaChart data={mergedData} accessibilityLayer>
+                    <defs>
+                      {tribeLookups.map(({ shortName }) => (
+                        <linearGradient key={shortName} id={`cmp-food-${shortName}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={`var(--color-${shortName}_food)`} stopOpacity={0.15} />
+                          <stop offset="100%" stopColor={`var(--color-${shortName}_food)`} stopOpacity={0.01} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="turn" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(v) => `T${v}`} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} width={28} />
+                    <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    {tribeLookups.map(({ shortName }) => (
+                      <Area key={shortName} dataKey={`${shortName}_food`} type="monotone" fill={`url(#cmp-food-${shortName})`} stroke={`var(--color-${shortName}_food)`} strokeWidth={2} connectNulls />
+                    ))}
+                  </AreaChart>
+                </ChartContainer>
+              </div>
+
+              {/* Avg Wealth */}
+              <div
+                className="rounded-xl p-5"
+                style={{
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                }}
+              >
+                <h4
+                  className="font-mono text-[10px] uppercase tracking-wider mb-3"
+                  style={{ color: "var(--color-text-dim)" }}
+                >
+                  Average Wealth
+                </h4>
+                <ChartContainer config={wealthConfig} className="min-h-[200px] w-full">
+                  <AreaChart data={mergedData} accessibilityLayer>
+                    <defs>
+                      {tribeLookups.map(({ shortName }) => (
+                        <linearGradient key={shortName} id={`cmp-wealth-${shortName}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={`var(--color-${shortName}_wealth)`} stopOpacity={0.15} />
+                          <stop offset="100%" stopColor={`var(--color-${shortName}_wealth)`} stopOpacity={0.01} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="turn" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(v) => `T${v}`} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} width={28} />
+                    <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    {tribeLookups.map(({ shortName }) => (
+                      <Area key={shortName} dataKey={`${shortName}_wealth`} type="monotone" fill={`url(#cmp-wealth-${shortName})`} stroke={`var(--color-${shortName}_wealth)`} strokeWidth={2} connectNulls />
+                    ))}
+                  </AreaChart>
+                </ChartContainer>
+              </div>
+
+              {/* Inequality */}
+              <div
+                className="rounded-xl p-5"
+                style={{
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                }}
+              >
+                <h4
+                  className="font-mono text-[10px] uppercase tracking-wider mb-3"
+                  style={{ color: "var(--color-text-dim)" }}
+                >
+                  Wealth Inequality (Gini %)
+                </h4>
+                <ChartContainer config={ineqConfig} className="min-h-[200px] w-full">
+                  <AreaChart data={mergedData} accessibilityLayer>
+                    <defs>
+                      {tribeLookups.map(({ shortName }) => (
+                        <linearGradient key={shortName} id={`cmp-ineq-${shortName}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={`var(--color-${shortName}_ineq)`} stopOpacity={0.15} />
+                          <stop offset="100%" stopColor={`var(--color-${shortName}_ineq)`} stopOpacity={0.01} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="turn" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(v) => `T${v}`} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} width={28} domain={[0, 100]} />
+                    <ReferenceLine y={35} stroke="var(--color-warning)" strokeDasharray="4 3" strokeOpacity={0.4} />
+                    <ReferenceLine y={60} stroke="var(--color-danger)" strokeDasharray="4 3" strokeOpacity={0.4} />
+                    <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    {tribeLookups.map(({ shortName }) => (
+                      <Area key={shortName} dataKey={`${shortName}_ineq`} type="monotone" fill={`url(#cmp-ineq-${shortName})`} stroke={`var(--color-${shortName}_ineq)`} strokeWidth={2} connectNulls />
+                    ))}
+                  </AreaChart>
+                </ChartContainer>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Tribe Deep Dives ── */}
       <div className="space-y-6 mb-10">

@@ -76,14 +76,20 @@ export async function runDeliberation(
     // Not everyone speaks every round — cap at 10 speakers for large tribes
     const MAX_SPEAKERS_PER_ROUND = 10;
     const speakingOrder = shuffle(livingAgents).slice(0, MAX_SPEAKERS_PER_ROUND);
-    const threadSnapshot = threadLines.join("\n\n");
+    // Keep context manageable — first line (council intro + dilemma) + last 15 messages
+    const MAX_CONTEXT_MESSAGES = 15;
+    const contextLines = threadLines.length <= MAX_CONTEXT_MESSAGES + 1
+      ? threadLines
+      : [threadLines[0], `[...${threadLines.length - MAX_CONTEXT_MESSAGES - 1} earlier messages...]`, ...threadLines.slice(-MAX_CONTEXT_MESSAGES)];
+    const threadSnapshot = contextLines.join("\n\n");
 
-    // ── Agents speak in batches ──
-    // Gemini 2.5 Flash Lite has 4K RPM — can handle larger batches
-    const BATCH_SIZE = 10;
+    // ── Agents speak in batches with delays to respect TPM limits ──
+    const BATCH_SIZE = 3;
     const roundResults: { agent: AgentForDelib; text: string }[] = [];
 
     for (let b = 0; b < speakingOrder.length; b += BATCH_SIZE) {
+      // Pause between batches to spread token usage across the minute
+      if (b > 0) await new Promise((r) => setTimeout(r, 2000));
       const batch = speakingOrder.slice(b, b + BATCH_SIZE);
       const batchResults = await Promise.all(
         batch.map(async (agent) => {
@@ -200,40 +206,97 @@ function guessRuleDomain(text: string): string {
 }
 
 // ── Dilemma Generator ──
-// Creates concrete problems that force agents to confront their rules
+// Creates concrete problems that directly challenge existing rules
 
-type DilemmaPool = { condition: (pop: number, context: string) => boolean; dilemma: string }[];
+type DilemmaFn = (tribe: TribeForDelib, pop: number, ctx: string) => string | null;
 
-const DILEMMAS: DilemmaPool = [
-  // Population pressure
-  { condition: (pop) => pop > 15, dilemma: "The tribe has grown large. Food stores are stretched thin. Some say we need new rules about who gets what. Others say our current system works. How should we distribute resources as we grow?" },
-  { condition: (pop) => pop > 20, dilemma: "With so many members, the old ways of making decisions are slow. Some voices are never heard. Should we change how we govern ourselves to handle our growing numbers?" },
-  { condition: (pop) => pop < 6, dilemma: "Our numbers are dangerously low. We must decide: do we change our ways to attract outsiders, or hold firm to our traditions and hope for natural growth?" },
-  // Generational tension
-  { condition: (_, ctx) => ctx.includes("New members") || ctx.includes("born"), dilemma: "The young ones are coming of age. They question some of our oldest rules. The elders insist on tradition. How do we balance respecting our past with allowing the next generation their voice?" },
-  // Resource crisis
-  { condition: (_, ctx) => /famine|drought|scarcity|blight/i.test(ctx), dilemma: "Resources are scarce. Some hoard while others starve. Do we enforce sharing, or trust individuals to do the right thing? Our current rules may not be enough." },
-  // Discovery / innovation
-  { condition: (_, ctx) => /discover|invent|new tool|technique/i.test(ctx), dilemma: "A new discovery could change how we live. But adopting it means changing old practices. Some see opportunity; others see the loss of tradition. How do we handle new knowledge?" },
-  // Internal conflict
-  { condition: (_, ctx) => /conflict|dispute|struggle|unrest|rebellion/i.test(ctx), dilemma: "Tensions are rising within the tribe. Two factions disagree about the direction we should take. Our current governance may need to adapt, or we risk tearing apart." },
-  // Death and legacy
-  { condition: (_, ctx) => /mourns|loss|died/i.test(ctx), dilemma: "We have lost members of our community. Their wisdom and labor are gone. How do we honor them? Should their beliefs live on in our rules, or do we forge a new path without them?" },
-  // General — philosophical
-  { condition: () => true, dilemma: "It is time to reflect on our way of life. Are our rules serving us well? What would we change if we could? What must we preserve at all costs?" },
-  { condition: () => true, dilemma: "A member asks a hard question: 'Why do we follow these rules? Who decided them, and do they still make sense for who we are today?' The council must respond." },
-  { condition: () => true, dilemma: "The world around us is changing. Other peoples exist beyond our borders. Our children grow up differently than we did. Should our rules evolve with the times, or are they the bedrock that keeps us together?" },
-  { condition: () => true, dilemma: "Some members feel they have no voice in decisions. Others feel the current system gives too much power to a few. How should authority be distributed in our tribe?" },
+const DILEMMA_GENERATORS: DilemmaFn[] = [
+  // Pick a random existing rule and challenge it
+  (tribe) => {
+    const rule = tribe.rules[Math.floor(Math.random() * tribe.rules.length)];
+    return `One of your rules states: "${rule.text}" — Some members believe this rule is outdated or harmful. Others defend it fiercely. Should this rule be CHANGED, REMOVED, or KEPT as-is? If changed, what should replace it?`;
+  },
+
+  // Governance crisis
+  (tribe, pop) => {
+    if (pop <= 10) return null;
+    const govRules = tribe.rules.filter((r) => r.domain === "governance");
+    if (govRules.length === 0) return null;
+    return `Your governance rule says: "${govRules[0].text}" — But with ${pop} members, many feel unheard. Three younger members are threatening to leave unless the governance changes. Do you reform how decisions are made, or let them go?`;
+  },
+
+  // Economy failing
+  (tribe, _pop, ctx) => {
+    if (!/hungry|scarce|starving|famine/i.test(ctx)) return null;
+    const econRules = tribe.rules.filter((r) => r.domain === "economy");
+    if (econRules.length === 0) return null;
+    return `People are going hungry. Your economy rule says: "${econRules[0].text}" — This is clearly not working. Members are angry. Do you fundamentally change how resources work, or try to make the current system work harder?`;
+  },
+
+  // Social tension from inequality
+  (tribe, pop) => {
+    if (pop < 12) return null;
+    const socialRules = tribe.rules.filter((r) => r.domain === "social");
+    if (socialRules.length === 0) return null;
+    return `A bitter dispute has erupted. The wealthy members live comfortably while others struggle. Your social rule says: "${socialRules[0].text}" — Is this fair? Should the tribe force redistribution, or is inequality the price of freedom?`;
+  },
+
+  // Cultural identity crisis
+  (tribe, pop) => {
+    if (pop < 15) return null;
+    const cultRules = tribe.rules.filter((r) => r.domain === "cultural");
+    if (cultRules.length === 0) return null;
+    return `The newest generation has never known the founders. They don't understand why the rule "${cultRules[0].text}" matters. They want to define their OWN identity. Should the tribe let go of old beliefs, or force the young to learn them?`;
+  },
+
+  // External pressure
+  (tribe) => {
+    const extRules = tribe.rules.filter((r) => r.domain === "external");
+    if (extRules.length === 0) return null;
+    return `Scouts report a thriving settlement beyond the hills — they have food, tools, and knowledge we lack. Your rule says: "${extRules[0].text}" — But some members want to trade, or even merge with them. Do you open your borders or stay isolated?`;
+  },
+
+  // Power struggle
+  (tribe, pop) => {
+    if (pop < 10) return null;
+    return `A charismatic young member has gathered a following of ${Math.floor(pop / 3)} supporters. They demand a completely new form of governance — abolishing the current "${tribe.governanceModel}" system. This is a direct challenge to how the tribe is led. What happens?`;
+  },
+
+  // The radical question
+  (tribe) => {
+    return `Imagine you could ERASE all current rules and start fresh. What kind of society would you build? What rules would you write from scratch? This is not hypothetical — if enough of you agree, you CAN change everything. What is your vision for the tribe's future?`;
+  },
+
+  // Specific rule contradiction
+  (tribe) => {
+    if (tribe.rules.length < 4) return null;
+    const r1 = tribe.rules[Math.floor(Math.random() * tribe.rules.length)];
+    let r2 = tribe.rules[Math.floor(Math.random() * tribe.rules.length)];
+    let attempts = 0;
+    while (r2.text === r1.text && attempts < 5) {
+      r2 = tribe.rules[Math.floor(Math.random() * tribe.rules.length)];
+      attempts++;
+    }
+    return `Two of your rules seem to conflict: "${r1.text}" vs "${r2.text}" — When these clash, which takes priority? Should one be removed or rewritten to resolve the tension?`;
+  },
+
+  // Death of an elder who held old values
+  (_tribe, _pop, ctx) => {
+    if (!/mourns|loss|died/i.test(ctx)) return null;
+    return `An elder who passionately defended the old ways has died. With them gone, the strongest voice for tradition is silenced. This is a turning point — do you honor their legacy by preserving what they fought for, or seize this moment to make the changes they always blocked?`;
+  },
 ];
 
 function generateDilemma(tribe: TribeForDelib, population: number, context: string): string {
-  // Find all matching dilemmas, preferring specific ones
-  const matching = DILEMMAS.filter((d) => d.condition(population, context));
+  // Try context-specific dilemmas first, then fall back to random
+  const shuffled = [...DILEMMA_GENERATORS].sort(() => Math.random() - 0.5);
 
-  // Prefer specific (non-always-true) dilemmas when available
-  const specific = matching.filter((d) => d.condition !== (() => true));
-  const pool = specific.length > 0 ? specific : matching;
+  for (const gen of shuffled) {
+    const dilemma = gen(tribe, population, context);
+    if (dilemma) return dilemma;
+  }
 
-  const picked = pool[Math.floor(Math.random() * pool.length)];
-  return picked.dilemma;
+  // Ultimate fallback
+  const rule = tribe.rules[Math.floor(Math.random() * tribe.rules.length)];
+  return `Your rule states: "${rule.text}" — Does this still serve the tribe? Should it be changed, strengthened, or abolished entirely?`;
 }

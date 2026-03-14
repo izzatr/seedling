@@ -83,6 +83,7 @@ export const simulations = pgTable("simulations", {
   councilInterval: integer("council_interval").notNull().default(4),
   generationLength: integer("generation_length").notNull().default(25),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  cachedReport: jsonb("cached_report"),
 });
 
 export const tribes = pgTable("tribes", {

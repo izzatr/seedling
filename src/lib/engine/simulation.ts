@@ -17,6 +17,14 @@ import { runDeliberation } from "../agents/deliberation";
 import { runVote } from "./governance";
 import { broadcast } from "./sse";
 
+// ── Crisis Magnitude Override ──
+// During crises, tribes can make one step bigger changes than normal
+function upgradeMagnitude(current: "minor" | "small" | "moderate" | "any"): "minor" | "small" | "moderate" | "any" {
+  const ladder: ("minor" | "small" | "moderate" | "any")[] = ["minor", "small", "moderate", "any"];
+  const idx = ladder.indexOf(current);
+  return ladder[Math.min(idx + 1, ladder.length - 1)];
+}
+
 // ── Abort Controllers ──
 
 const abortControllers = new Map<string, AbortController>();
@@ -182,11 +190,17 @@ async function processTribeTurn(
           domain: proposal.domain, turn,
         });
 
+        // During crises, loosen magnitude constraints — desperate times call for bold measures
+        const inCrisis = economy.hungry.length > 0 || economy.starving.length > 0 || events.length > 0;
+        const effectiveMagnitude = inCrisis
+          ? upgradeMagnitude(tribe.changeMagnitude as "minor" | "small" | "moderate" | "any")
+          : tribe.changeMagnitude;
+
         const voteResult = await runVote(
           {
             name: tribe.name, rules: tribe.rules as TribeRule[],
             governanceModel: tribe.governanceModel,
-            votingThreshold: tribe.votingThreshold, changeMagnitude: tribe.changeMagnitude,
+            votingThreshold: tribe.votingThreshold, changeMagnitude: effectiveMagnitude,
           },
           votingAgents.map(mapAgent), proposal
         );
@@ -293,13 +307,11 @@ export async function startSimulationLoop(simulationId: string): Promise<void> {
 
       const allTribes = await db.select().from(tribes).where(eq(tribes.simulationId, simulationId));
 
-      // ── Process ALL 4 tribes in parallel ──
-      // Gemini Flash Lite: 4K RPM, 4M TPM — 4 tribes x 5 agent batch = 20 concurrent calls is safe
-      await Promise.all(
-        allTribes.map((tribe) =>
-          processTribeTurn(simulationId, tribe, turnId, turn, generation, turnType)
-        )
-      );
+      // ── Process tribes one at a time to stay within 4M TPM limit ──
+      for (const tribe of allTribes) {
+        if (controller.signal.aborted) break;
+        await processTribeTurn(simulationId, tribe, turnId, turn, generation, turnType);
+      }
 
       if (turnType === "milestone") {
         await db.update(simulations).set({ currentGeneration: generation }).where(eq(simulations.id, simulationId));
